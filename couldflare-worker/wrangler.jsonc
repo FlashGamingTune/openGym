@@ -1,0 +1,17 @@
+{
+  "$schema": "https://developers.cloudflare.com/workers/wrangler/config-schema.json",
+  "name": "opengym-sync-api",
+  "main": "src/index.js",
+  "compatibility_date": "2026-10-20",
+  "workers_dev": true,
+  "observability": { "enabled": true },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "opengym-db",
+      "database_id": "f4c9c008-38be-4abb-94d3-9ebbf75d6967",
+      "migrations_dir": "migrations"
+    }
+  ]
+}
+

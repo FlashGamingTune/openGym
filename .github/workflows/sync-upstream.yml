@@ -1,0 +1,56 @@
+name: Check Open Gym upstream
+
+on:
+  schedule:
+    - cron: '23 9 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: open-gym-upstream-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    # This workflow is for the personal fork only.
+    if: github.repository == 'FlashGamingTune/openGym'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out my fork
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Merge upstream updates and open a pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git remote add upstream https://github.com/DuarteSantos8/openGym.git
+          git fetch --no-tags upstream main
+          git fetch --no-tags origin main
+
+          if git merge-base --is-ancestor upstream/main origin/main; then
+            echo "Your main branch already includes all upstream commits."
+            exit 0
+          fi
+
+          git checkout -B upstream-sync origin/main
+          git merge --no-edit upstream/main
+          git push --force origin HEAD:refs/heads/upstream-sync
+
+          pr_number=$(gh pr list --repo "$GITHUB_REPOSITORY" --base main --head "$GITHUB_REPOSITORY_OWNER:upstream-sync" --state open --json number --jq '.[0].number // empty')
+          if [ -n "$pr_number" ]; then
+            gh pr edit "$pr_number" --repo "$GITHUB_REPOSITORY" \
+              --title "Sync Open Gym upstream updates" \
+              --body "This pull request brings the latest commits from DuarteSantos8/openGym main into this fork. Review the changes, then merge to apply them. Your couldflare-worker folder stays in this repository."
+          else
+            gh pr create --repo "$GITHUB_REPOSITORY" --base main --head upstream-sync \
+              --title "Sync Open Gym upstream updates" \
+              --body "This pull request brings the latest commits from DuarteSantos8/openGym main into this fork. Review the changes, then merge to apply them. Your couldflare-worker folder stays in this repository."
+          fi
+
